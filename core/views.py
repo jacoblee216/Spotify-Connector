@@ -22,7 +22,9 @@ TO DO:
 Get playlists -- DONE
 Display each playlist's songs by dropdown -- DONE
 Grab genres of each song and keep track based on users?
-Get top tracks
+Determine user's tastes
+Create way to see other user's tastes
+Get top tracks and artists -- DONE
 
 """
 
