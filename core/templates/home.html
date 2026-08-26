@@ -6,35 +6,6 @@
 <title>Spotify Dashboard</title>
 
 <style>
-.song-list li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.song-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.song-name {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #888;
-}
-
-.song-artists {
-    font-size: 0.8rem;
-    font-weight: 400;
-    color: #888;
-    margin-top: 2px;
-}
-.message.error {
-color: var(--danger);
-}
-.message.success {
-    color: var(--accent);
-}
 :root {
     --bg: #0f1115;
     --panel: #171a21;
@@ -53,18 +24,30 @@ color: var(--danger);
 
 html, body {
     margin: 0;
-    height: 100%;
+    min-height: 100%;
     background: var(--bg);
     font-family: "Segoe UI", system-ui, sans-serif;
     color: var(--text);
 }
 
 body {
-    display: flex;
-    align-items: flex-start;
-    gap: 24px;
-    flex-wrap: wrap;
     padding: 24px;
+}
+
+.page-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.message.error {
+    color: var(--danger);
+}
+.message.success {
+    color: var(--accent);
+}
+
+.messages {
+    margin-bottom: 16px;
 }
 
 /* Page Header */
@@ -75,7 +58,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding-bottom: 16px;
-    margin-bottom: 4px;
+    margin-bottom: 24px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -100,6 +83,41 @@ body {
     opacity: 1;
 }
 
+/* 3-column dashboard layout, scales to the viewport */
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 24px;
+    width: 100%;
+    /* the columns fill the available viewport height beneath the header */
+    height: calc(100vh - 140px);
+    min-height: 560px;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+}
+
+@media (max-width: 980px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .column {
+        height: auto;
+    }
+    .card, .profile-card {
+        min-height: 360px;
+    }
+}
+
 /* Cards */
 
 .card {
@@ -107,8 +125,9 @@ body {
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 20px 24px;
-    width: 320px;
-    height: 500px;
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     box-shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -159,6 +178,7 @@ ul {
     margin: 0;
     padding: 0 4px 0 0;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -197,6 +217,53 @@ li:last-child {
     flex-shrink: 0;
 }
 
+/* Rank number badge (top tracks, playlist songs) */
+
+.rank {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    width: 22px;
+    flex-shrink: 0;
+    text-align: right;
+    margin-right: 12px;
+}
+
+/* Song list (top tracks, and inside playlist dropdowns) */
+
+.song-list li,
+.ranked-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.song-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.song-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.song-artists {
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: #888;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Buttons */
 
 button {
@@ -224,8 +291,7 @@ button.remove {
     border: 1px solid var(--profile-border);
     border-radius: 14px;
     padding: 28px 32px;
-    width: 380px;
-    box-shadow: 0 14px 36px rgba(0,0,0,.45);
+    overflow-y: auto;
 }
 
 .profile-header {
@@ -233,6 +299,7 @@ button.remove {
     align-items: center;
     gap: 14px;
     margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 .avatar {
@@ -247,6 +314,14 @@ button.remove {
     font-weight: 600;
     color: white;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .profile-name {
@@ -266,6 +341,7 @@ button.remove {
     padding: 12px 0;
     border-top: 1px solid var(--profile-border);
     font-size: 13px;
+    flex-shrink: 0;
 }
 
 .stat-label {
@@ -278,6 +354,7 @@ button.remove {
     border: 1px solid var(--profile-border);
     border-radius: 10px;
     background: rgba(255,255,255,.03);
+    flex-shrink: 0;
 }
 
 .genre-title {
@@ -307,12 +384,37 @@ button.remove {
     padding: 12px;
     font-size: 14px;
     font-weight: 600;
+    flex-shrink: 0;
+}
+.artist-row {
+    justify-content: flex-start;
 }
 
+.artist-thumb,
+.artist-thumb-fallback {
+    height: 2.2em;
+    width: 2.2em;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.artist-thumb-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+}
 </style>
 </head>
 
 <body>
+<div class="page-container">
+
 {% if messages %}
 <div class="messages">
     {% for message in messages %}
@@ -322,6 +424,7 @@ button.remove {
     {% endfor %}
 </div>
 {% endif %}
+
 <!-- Page Header -->
 
 <div class="page-header">
@@ -337,182 +440,229 @@ button.remove {
     </form>
 </div>
 
-<!-- Top Tracks -->
+<!-- Dashboard: 3 columns -->
 
-<div class="card">
-    <div class="card-header">
-        <h1>Top Tracks</h1>
-        <form method="GET" action="{% url 'refresh_top_tracks' %}">
-            <button class="refresh-button" type="submit">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                Refresh
-            </button>
-        </form>
-    </div>
+<div class="dashboard">
 
-    <ul>
-        {% for track in top_tracks %}
-        <li>
-            <span class="title">{{ track.name }}</span>
-            <span class="added">{{ track.artist }}</span>
-        </li>
-        {% empty %}
-        <li>
-            <span class="title">No tracks available</span>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
+    <!-- Column 1: Top Artists (top) + Top Tracks (bottom) -->
+    <div class="column">
 
-<!-- Playlists -->
-<div class="card">
-    <div class="card-header">
-        <h1>My Playlists</h1>
-        <form method="GET" action="{% url 'refresh_playlists' %}">
-            <button class="refresh-button" type="submit">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-                Refresh
-            </button>
-        </form>
-    </div>
-
-    <ul>
-        {% for playlist in playlists %}
-        <li>
-            {% if playlist.song_count > 0 %}
-            <details class="playlist-dropdown">
-                <summary>
-                    <span class="title">{{ playlist.name }}</span>
-                    <span class="added">{{ playlist.song_count }} songs</span>
-                </summary>
-                    <ul class="song-list">
-                        {% for song in playlist.songs.all %}
-                        <li>
-                            <div class="song-info">
-                                <span class="song-name">{{ song.name }}</span>
-                                <span class="song-artists">{{ song.artists }}</span>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-            </details>
-            {% else %}
-            <div class="playlist-row">
-                <span class="title">{{ playlist.name }}</span>
-                <span class="added">{{ playlist.song_count }} songs</span>
+        <div class="card">
+            <div class="card-header">
+                <h1>Top Artists</h1>
+                <form method="GET" action="{% url 'refresh_top_artists' %}">
+                    <button class="refresh-button" type="submit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Refresh
+                    </button>
+                </form>
             </div>
-            {% endif %}
-        </li>
-        {% empty %}
-        <li>
-            <span class="title">No playlists available</span>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
 
-<!-- Spotify Profile -->
-
-<div class="profile-card">
-
-    <div class="profile-header">
-        <div class="avatar">
-            {% if spotify_profile %}
-                {{spotify_profile.profile_image_url}}
-            {% else %} 
-                {{ username|slice:":1"|upper }}
-            {% endif %}
+            <ul>
+                {% for artist, url in top_artists.items %}
+                <li class="artist-row">
+                    <span class="rank">{{ forloop.counter }}</span>
+                    {% if url %}
+                        <img class="artist-thumb" src="{{ url }}" alt="{{ artist }}">
+                    {% else %}
+                        <span class="artist-thumb-fallback">{{ artist|slice:":1"|upper }}</span>
+                    {% endif %}
+                    <span class="title">{{ artist }}</span>
+                </li>
+                {% empty %}
+                <li>
+                    <span class="title">No artists available</span>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
 
-        <div>
-            <div class="profile-name">
-                {% if spotify_profile %} <!--fix parameters passed from home view-->
-                    {{ spotify_profile.spotify_name }}
-                {% else %}
-                    Spotify Not Connected
-                {% endif %}
+        <div class="card">
+            <div class="card-header">
+                <h1>Top Tracks</h1>
+                <form method="GET" action="{% url 'refresh_top_tracks' %}">
+                    <button class="refresh-button" type="submit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Refresh
+                    </button>
+                </form>
             </div>
 
-            <div class="profile-sub">
-                {% if spotify_profile %}
-                    Connected to Spotify
-                {% else %}
-                    Connect your Spotify account
-                {% endif %}
+            <ul>
+                {% for track, artist in top_tracks.items %}
+                <li class="ranked-row">
+                    <span class="rank">{{ forloop.counter }}</span>
+                    <div class="song-info">
+                        <span class="song-name">{{ track }}</span>
+                        <span class="song-artists">{{ artist }}</span>
+                    </div>
+                </li>
+                {% empty %}
+                <li>
+                    <span class="title">No tracks available</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+
+    <!-- Column 2: Playlists -->
+    <div class="column">
+        <div class="card">
+            <div class="card-header">
+                <h1>My Playlists</h1>
+                <form method="GET" action="{% url 'refresh_playlists' %}">
+                    <button class="refresh-button" type="submit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Refresh
+                    </button>
+                </form>
             </div>
+
+            <ul>
+                {% for playlist in playlists %}
+                <li>
+                    {% if playlist.song_count > 0 %}
+                    <details class="playlist-dropdown">
+                        <summary>
+                            <span class="title">{{ playlist.name }}</span>
+                            <span class="added">{{ playlist.song_count }} songs</span>
+                        </summary>
+                            <ul class="song-list">
+                                {% for song in playlist.songs.all %}
+                                <li>
+                                    <span class="rank">{{ forloop.counter }}</span>
+                                    <div class="song-info">
+                                        <span class="song-name">{{ song.name }}</span>
+                                        <span class="song-artists">{{ song.artists }}</span>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                    </details>
+                    {% else %}
+                    <div class="playlist-row">
+                        <span class="title">{{ playlist.name }}</span>
+                        <span class="added">{{ playlist.song_count }} songs</span>
+                    </div>
+                    {% endif %}
+                </li>
+                {% empty %}
+                <li>
+                    <span class="title">No playlists available</span>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
     </div>
 
-    <div class="stat-row">
-        <span class="stat-label">Followers</span>
-        <span>
-            {% if spotify_profile %}
-                {{ spotify_profile.follower_count }}
-            {% else %}
-                -
-            {% endif %}
-        </span>
-    </div>
+    <!-- Column 3: Spotify Profile -->
+    <div class="column">
+        <div class="card profile-card">
 
-    <div class="stat-row">
-        <span class="stat-label">Country</span>
-        <span>
-            {% if spotify_connected %}
-                {{ spotify_profile.country }}
-            {% else %}
-                -
-            {% endif %}
-        </span>
-    </div>
+            <div class="profile-header">
+                <div class="avatar">
+                    {% if spotify_profile %}
+                        {{ spotify_profile.profile_image_url }}
+                    {% else %}
+                        {{ username|slice:":1"|upper }}
+                    {% endif %}
+                </div>
 
-    <div class="stat-row">
-        <span class="stat-label">Playlists</span>
-        <span>{{ playlists|length }}</span>
-    </div>
+                <div>
+                    <div class="profile-name">
+                        {% if spotify_profile %} <!--fix parameters passed from home view-->
+                            {{ spotify_profile.spotify_name }}
+                        {% else %}
+                            Spotify Not Connected
+                        {% endif %}
+                    </div>
 
-    <div class="stat-row">
-        <span class="stat-label">Top Tracks</span>
-        <span>{{ top_tracks|length }}</span>
-    </div>
+                    <div class="profile-sub">
+                        {% if spotify_profile %}
+                            Connected to Spotify
+                        {% else %}
+                            Connect your Spotify account
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
-    <div class="genre-box">
-        <div class="genre-title">Favorite Genres</div>
-
-        <div class="genre-list">
-            {% for genre in favorite_genres %}
-                <span class="genre-tag">{{ genre }}</span>
-            {% empty %}
-                <span class="profile-sub">
-                    No genre data available.
+            <div class="stat-row">
+                <span class="stat-label">Followers</span>
+                <span>
+                    {% if spotify_profile %}
+                        {{ spotify_profile.follower_count }}
+                    {% else %}
+                        -
+                    {% endif %}
                 </span>
-            {% endfor %}
+            </div>
+
+            <div class="stat-row">
+                <span class="stat-label">Country</span>
+                <span>
+                    {% if spotify_connected %}
+                        {{ spotify_profile.country }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="stat-row">
+                <span class="stat-label">Playlists</span>
+                <span>{{ playlists|length }}</span>
+            </div>
+
+            <div class="stat-row">
+                <span class="stat-label">Top Tracks</span>
+                <span>{{ top_tracks|length }}</span>
+            </div>
+
+            <div class="genre-box">
+                <div class="genre-title">Favorite Genres</div>
+
+                <div class="genre-list">
+                    {% for genre in favorite_genres %}
+                        <span class="genre-tag">{{ genre }}</span>
+                    {% empty %}
+                        <span class="profile-sub">
+                            No genre data available.
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if spotify_profile %}
+
+            <form method="POST">
+                {% csrf_token %}
+                <button
+                    class="remove spotify-button"
+                    type="submit"
+                    name="action"
+                    value="disconnect">
+                    Disconnect Spotify
+                </button>
+            </form>
+
+            {% else %}
+
+            <a href="{% url 'spotify_login' %}">
+                <button class="spotify-button" type="button">
+                    Connect Spotify
+                </button>
+            </a>
+
+            {% endif %}
+
         </div>
     </div>
 
-{% if spotify_profile %}
-
-<form method="POST">
-    {% csrf_token %}
-    <button
-        class="remove spotify-button"
-        type="submit"
-        name="action"
-        value="disconnect">
-        Disconnect Spotify
-    </button>
-</form>
-
-{% else %}
-
-<a href="{% url 'spotify_login' %}">
-    <button class="spotify-button" type="button">
-        Connect Spotify
-    </button>
-</a>
-
-{% endif %}
-
 </div>
 
+</div>
 </body>
 </html>

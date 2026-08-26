@@ -48,10 +48,14 @@ def exchange_code_for_tokens(callback_code, user): # need to write another reque
 
             },
         )
-        if not exchange_code_for_playlist(callback_code, spotify_account):
+        if not exchange_code_for_playlist(spotify_account):
+            return False
+        if not add_top_tracks(spotify_account):
+            return False
+        if not add_top_artists(spotify_account):
             return False
         return True
-def exchange_code_for_playlist(callback_code, spotify_account):
+def exchange_code_for_playlist(spotify_account):
     playlist_response = requests.get(
         "https://api.spotify.com/v1/me/playlists",
         headers={"Authorization": f"Bearer {spotify_account.access_token}"},
@@ -61,7 +65,7 @@ def exchange_code_for_playlist(callback_code, spotify_account):
         print(playlist_response.text)
         return False
     playlist_data = playlist_response.json()
-    print("Total playlists:", playlist_data["total"])
+    # print("Total playlists:", playlist_data["total"]) # print for testing
 
     if playlist_data["items"]:
         for playlist in playlist_data["items"]:
@@ -72,12 +76,11 @@ def exchange_code_for_playlist(callback_code, spotify_account):
                     "name": playlist["name"],
                 },
             )
-            print(playlist["name"])
+            # print(playlist["name"]) # print for testing
             add_songs(playlist["id"], spotify_account)
     else:
         print("No playlists found for this user.")
     return True
-
 def add_songs(playlist_id, spotify_account): # function to add songs to playlist object 
     song_response= requests.get( # find way to tracks
         f"https://api.spotify.com/v1/playlists/{playlist_id}/items",
@@ -96,6 +99,16 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
             continue  # skip this entry, move to the next song
         if entry["is_local"] == True:
             artist_names = "Local File Song"
+            song_count += 1
+            song_object, created = Song.objects.update_or_create(
+                song_id=track["id"],
+                defaults = {
+                    "name": track["name"],
+                    "artists": artist_names,
+            }
+            )
+            songs.append(song_object)
+            continue
         else:
             artist_names = [artist["name"] for artist in track["artists"]]
         song_object, created = Song.objects.update_or_create(
@@ -111,7 +124,57 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
     playlist.songs.add(*songs)
     playlist.song_count = song_count
     playlist.save()
-    print("Added playlist")
-
+def add_top_tracks(spotify_account):
+    track_response= requests.get( 
+        f"https://api.spotify.com/v1/me/top/tracks",
+        headers={"Authorization": f"Bearer {spotify_account.access_token}"},
+    )
+    if track_response.status_code != 200:
+        print("Song request failed.")
+        print(track_response.text)
+        return False
+    top_tracks = track_response.json()
+    tracks = {}
+    for entry in top_tracks["items"]:
+        if entry["is_local"] == True:
+            tracks[entry["name"]] = "Local File Song"
+            continue
+        artist_names = []
+        for artist in entry["artists"]:
+            artist_names.append(artist["name"])
+        tracks[entry["name"]] = ", ".join(artist_names)
+    spotify_account.top_tracks.update(tracks)
+    spotify_account.save(update_fields=["top_tracks"])
+    return True
+def add_top_artists(spotify_account):
+    artist_response= requests.get( 
+        f"https://api.spotify.com/v1/me/top/artists",
+        headers={"Authorization": f"Bearer {spotify_account.access_token}"},
+    )
+    if artist_response.status_code != 200:
+        print("Song request failed.")
+        print(artist_response.text)
+        return False
+    top_artists = artist_response.json()
+    print(top_artists)
+    artists = {}
+    for entry in top_artists["items"]:
+        temp = 1000
+        url = ""
+        for image in entry["images"]:
+            if image["height"] < temp:
+                temp = image["height"]
+                url = image["url"]
+        artist_name = entry["name"]
+        artists[artist_name] = url
+    spotify_account.top_artists.update(artists)
+    spotify_account.save(update_fields=["top_artists"])
+    return True
+        
+    
+        
+        
+    
+    
 
 

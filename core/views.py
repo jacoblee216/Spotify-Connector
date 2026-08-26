@@ -38,13 +38,18 @@ def home(request):
             return redirect("home")
     spotify_profile = SpotifyAccount.objects.filter(user=user).first()
     playlists = Playlist.objects.none()  # default: empty queryset
+    top_tracks = {}
+    top_artists = []
     if spotify_profile:         
         playlists = spotify_profile.playlists.all().order_by('-song_count')
+        top_tracks = spotify_profile.top_tracks
+        top_artists = spotify_profile.top_artists
     context = {
         "user": user,
         "spotify_profile": SpotifyAccount.objects.filter(user=user).first(),
-        "top_artists": "top_artists",
+        "top_artists": top_artists,
         "playlists": playlists,
+        "top_tracks": top_tracks,
     }
     return render(request, "home.html", context)
 def login_view(request): # also implement a way to get rid of logged in tokens when clicking log out
@@ -129,4 +134,6 @@ def spotify_login(request):
 def refresh_playlists(request):
     return redirect("home")
 def refresh_top_tracks(request):
+    return redirect("home")
+def refresh_top_artists(request):
     return redirect("home")

@@ -35,7 +35,8 @@ class SpotifyAccount(models.Model):
     profile_image_url = models.CharField(max_length=100,blank=True)
     spotify_id = models.CharField(max_length=255,unique=True)
     spotify_name = models.CharField(max_length=25, default="")
-    
+    top_tracks = models.JSONField(default=dict, blank=True)
+    top_artists = models.JSONField(default=dict, blank=True) # key - artist, value - img url
 
     connected_at = models.DateTimeField(auto_now_add=True)
     last_refreshed_at = models.DateTimeField(auto_now_add=True)
