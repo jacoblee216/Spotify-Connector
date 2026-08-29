@@ -409,6 +409,26 @@ button.remove {
     font-size: 11px;
     font-weight: 600;
 }
+.spots-moved {
+    font-size: 11px;
+    font-weight: 600;
+    width: 34px;
+    flex-shrink: 0;
+    text-align: center;
+    margin-right: 10px;
+}
+
+.spots-moved.up {
+    color: var(--accent);
+}
+
+.spots-moved.down {
+    color: var(--danger);
+}
+
+.spots-moved.same {
+    color: var(--muted);
+}
 </style>
 </head>
 
@@ -458,23 +478,30 @@ button.remove {
                 </form>
             </div>
 
-            <ul>
-                {% for artist, url in top_artists.items %}
-                <li class="artist-row">
-                    <span class="rank">{{ forloop.counter }}</span>
-                    {% if url %}
-                        <img class="artist-thumb" src="{{ url }}" alt="{{ artist }}">
-                    {% else %}
-                        <span class="artist-thumb-fallback">{{ artist|slice:":1"|upper }}</span>
-                    {% endif %}
-                    <span class="title">{{ artist }}</span>
-                </li>
-                {% empty %}
-                <li>
-                    <span class="title">No artists available</span>
-                </li>
-                {% endfor %}
-            </ul>
+                <ul>
+                    {% for artist, artistData in top_artists.items %}
+                    <li class="artist-row">
+                        <span class="rank">{{ forloop.counter }}</span>
+                        <span class="spots-moved {% if artistData.spots_moved > 0 %}up{% elif artistData.spots_moved < 0 %}down{% else %}same{% endif %}">
+                            {% if artistData.spots_moved > 0 %}▲{{ artistData.spots_moved }}
+                            {% elif artistData.spots_moved < 0 %}▼{{ artistData.spots_moved|slice:"1:" }}
+                            {% elif artistData.spots_moved == 0 %}—
+                            {% else %}NEW
+                            {% endif %}
+                        </span>
+                        {% if artistData.url %}
+                            <img class="artist-thumb" src="{{ artistData.url }}" alt="{{ artist }}">
+                        {% else %}
+                            <span class="artist-thumb-fallback">{{ artist|slice:":1"|upper }}</span>
+                        {% endif %}
+                        <span class="title">{{ artist }}</span>
+                    </li>
+                    {% empty %}
+                    <li>
+                        <span class="title">No artists available</span>
+                    </li>
+                    {% endfor %}
+                </ul>
         </div>
 
         <div class="card">
@@ -489,12 +516,19 @@ button.remove {
             </div>
 
             <ul>
-                {% for track, artist in top_tracks.items %}
+                {% for track, trackData in top_tracks.items %}
                 <li class="ranked-row">
                     <span class="rank">{{ forloop.counter }}</span>
+                    <span class="spots-moved {% if trackData.spots_moved > 0 %}up{% elif trackData.spots_moved < 0 %}down{% else %}same{% endif %}">
+                        {% if trackData.spots_moved > 0 %}▲{{ trackData.spots_moved }}
+                        {% elif trackData.spots_moved < 0 %}▼{{ trackData.spots_moved|slice:"1:" }}
+                        {% elif trackData.spots_moved == 0 %}—
+                        {% else %}NEW
+                        {% endif %}
+                    </span>
                     <div class="song-info">
                         <span class="song-name">{{ track }}</span>
-                        <span class="song-artists">{{ artist }}</span>
+                        <span class="song-artists">{{ trackData.artists }}</span>
                     </div>
                 </li>
                 {% empty %}

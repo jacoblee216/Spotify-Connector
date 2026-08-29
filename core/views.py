@@ -3,9 +3,10 @@ from django.contrib.auth.decorators import login_required
 from .models import Song, Playlist, AppUser, SpotifyAccount
 from urllib.parse import urlencode
 from django.conf import settings
-from .utils import exchange_code_for_tokens
+from .utils import *
 from django.contrib import messages
 from django.contrib.messages import get_messages
+from functools import wraps
 """
 
 GOAL OF PROJECT:
@@ -21,18 +22,31 @@ Potential features and additions:
 TO DO:
 Get playlists -- DONE
 Display each playlist's songs by dropdown -- DONE
-Grab genres of each song and keep track based on users?
-Determine user's tastes
-Create way to see other user's tastes
+Grab genres of each song and keep track based on users? -- UNSURE
+Determine user's tastes -- UNSURE
+Create way to see other user's tastes -- UNSURE
 Get top tracks and artists -- DONE
+Implement timestamp for refreshing dashboard to display most recent updates -- WIP
 
 """
-
+def login_required_app_user(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        user_id = request.session.get("app_user_id")
+        if not user_id:
+            return redirect("login") # case: user does not exist
+        
+        try:
+            request.app_user = AppUser.objects.get(id=user_id) # add app user to the request
+        except AppUser.DoesNotExist:
+            request.session.pop("app_user_id", None)  # clean up stale session
+            return redirect("login")
+        
+        return view_func(request, *args, **kwargs)
+    return wrapper
+@login_required_app_user
 def home(request):
-    user_id = request.session.get("app_user_id")
-    if not user_id:
-        return redirect("login")
-    user = AppUser.objects.get(id=user_id)
+    user = request.app_user
     if request.method == "POST":
         action = request.POST.get("action") 
         if action == "disconnect": # handles logout button post request
@@ -112,7 +126,6 @@ def spotify_callback(request):
     
     messages.success(request, "Spotify account connected successfully.")
     return redirect("home")
-
 def spotify_login(request):
     client_id = settings.CLIENT_ID
     params = {
@@ -133,9 +146,39 @@ def spotify_login(request):
     )
 
     return redirect(spotify_auth_url)
+@login_required_app_user
 def refresh_playlists(request):
-    return redirect("home")
+    spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
+    if (spotify_profile):
+        if exchange_code_for_playlist(spotify_profile):
+            messages.success(request, "Playlists refreshed successfully!")
+            return redirect("home")
+        messages.error(request, "Couldn't refresh playlists")
+        return redirect("home")
+    else:
+        messages.error(request, "No user found")
+        return redirect("home")
+@login_required_app_user
 def refresh_top_tracks(request):
-    return redirect("home")
+    spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
+    if (spotify_profile):
+        if add_top_tracks(spotify_profile):
+            messages.success(request, "Tracks refreshed successfully!")
+            return redirect("home")
+        messages.error(request, "Couldn't refresh tracks")
+        return redirect("home")
+    else:
+        messages.error(request, "No user found")
+        return redirect("home")
+@login_required_app_user
 def refresh_top_artists(request):
-    return redirect("home")
+    spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
+    if (spotify_profile):
+        if add_top_artists(spotify_profile):
+            messages.success(request, "Artists refreshed successfully!")
+            return redirect("home")
+        messages.error(request, "Couldn't refresh artists")
+        return redirect("home")
+    else:
+        messages.error(request, "No user found")
+        return redirect("home")

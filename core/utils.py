@@ -78,6 +78,13 @@ def exchange_code_for_playlist(spotify_account):
             )
             # print(playlist["name"]) # print for testing
             add_songs(playlist["id"], spotify_account)
+    for object in Playlist.objects.all():
+        if playlist_data["items"]:
+            for playlist in playlist_data["items"]:
+                if object.name == playlist["name"]:
+                    break
+            else:
+                object.delete()
     else:
         print("No playlists found for this user.")
     return True
@@ -91,12 +98,11 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
         print(song_response.text)
         return False
     song_data = song_response.json()
+    
     songs = []
     song_count = 0
     for entry in song_data["items"]:
         track = entry.get("item")
-        if not track:
-            continue  # skip this entry, move to the next song
         if entry["is_local"] == True:
             artist_names = "Local File Song"
             song_count += 1
@@ -109,6 +115,9 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
             )
             songs.append(song_object)
             continue
+        if not track:
+            print(entry)
+            continue  # skip this entry, move to the next song
         else:
             artist_names = [artist["name"] for artist in track["artists"]]
         song_object, created = Song.objects.update_or_create(
@@ -134,16 +143,27 @@ def add_top_tracks(spotify_account):
         print(track_response.text)
         return False
     top_tracks = track_response.json()
-    tracks = {}
+    tracks = {} # new tracks to be added
+    newCount = 1
     for entry in top_tracks["items"]:
         if entry["is_local"] == True:
             tracks[entry["name"]] = "Local File Song"
             continue
         artist_names = []
+        attributes = {}
         for artist in entry["artists"]:
             artist_names.append(artist["name"])
-        tracks[entry["name"]] = ", ".join(artist_names)
-    spotify_account.top_tracks.update(tracks)
+        attributes["artists"] = ", ".join(artist_names) # nested dict values: "artists", "index", "spots_moved"
+        attributes["index"] = newCount
+        newCount += 1
+        tracks[entry["name"]] = attributes
+    oldTracks = spotify_account.top_tracks
+    for key, value in tracks.items(): # iterate through new tracks first
+        if key not in oldTracks.keys(): # check if new track is in old track, if not assign spots moved to (size of list - new track's current position)
+            value["spots_moved"] = 20 - value["index"]
+        else: # case: track moved position in list, so spots_moved is old position - new position in list (e.g old position: 14 - new position: 11 = +3)
+            value["spots_moved"] = oldTracks[key]["index"] - value["index"]
+    spotify_account.top_tracks = tracks
     spotify_account.save(update_fields=["top_tracks"])
     return True
 def add_top_artists(spotify_account):
@@ -158,16 +178,27 @@ def add_top_artists(spotify_account):
     top_artists = artist_response.json()
     print(top_artists)
     artists = {}
+    newCount = 1
     for entry in top_artists["items"]:
         temp = 1000
         url = ""
+        attributes = {}
         for image in entry["images"]:
             if image["height"] < temp:
                 temp = image["height"]
                 url = image["url"]
         artist_name = entry["name"]
-        artists[artist_name] = url
-    spotify_account.top_artists.update(artists)
+        attributes["url"] = url
+        attributes["index"] = newCount
+        artists[artist_name] = attributes
+        newCount += 1
+    oldArtists = spotify_account.top_artists
+    for key, value in artists.items():
+        if key not in oldArtists.keys():
+            value["spots_moved"] = 20 - value["index"]
+        else:
+            value["spots_moved"] = oldArtists[key]["index"] - value["index"]
+    spotify_account.top_artists = artists
     spotify_account.save(update_fields=["top_artists"])
     return True
         
