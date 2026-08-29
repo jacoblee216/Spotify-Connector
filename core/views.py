@@ -3,7 +3,9 @@ from django.contrib.auth.decorators import login_required
 from .models import Song, Playlist, AppUser, SpotifyAccount
 from urllib.parse import urlencode
 from django.conf import settings
+from django.utils import timezone
 from .utils import *
+from datetime import timedelta
 from django.contrib import messages
 from django.contrib.messages import get_messages
 from functools import wraps
@@ -22,12 +24,9 @@ Potential features and additions:
 TO DO:
 Get playlists -- DONE
 Display each playlist's songs by dropdown -- DONE
-Grab genres of each song and keep track based on users? -- UNSURE
-Determine user's tastes -- UNSURE
-Create way to see other user's tastes -- UNSURE
 Get top tracks and artists -- DONE
-Implement timestamp for refreshing dashboard to display most recent updates -- WIP
-
+Implement timestamp for refreshing dashboard to display most recent updates -- DONE
+Use MusicBrainz to get genres from artists -- WIP
 """
 def login_required_app_user(view_func):
     @wraps(view_func)
@@ -50,19 +49,24 @@ def home(request):
     if request.method == "POST":
         action = request.POST.get("action") 
         if action == "disconnect": # handles logout button post request
-            SpotifyAccount.objects.filter(user=user).delete()
+            spotify_account = SpotifyAccount.objects.filter(user=user).first()
+            if spotify_account:
+                spotify_account.access_token = None
+                spotify_account.refresh_token = None
+                spotify_account.save()
             return redirect("home")
     spotify_profile = SpotifyAccount.objects.filter(user=user).first()
-    playlists = Playlist.objects.none()  # default: empty queryset
+    is_connected = spotify_profile and spotify_profile.access_token is not None
+    playlists = Playlist.objects.none()
     top_tracks = {}
     top_artists = []
-    if spotify_profile:         
+    if is_connected:         
         playlists = spotify_profile.playlists.all().order_by('-song_count')
         top_tracks = spotify_profile.top_tracks
         top_artists = spotify_profile.top_artists
     context = {
         "user": user,
-        "spotify_profile": SpotifyAccount.objects.filter(user=user).first(),
+        "spotify_profile": spotify_profile if is_connected else None,
         "top_artists": top_artists,
         "playlists": playlists,
         "top_tracks": top_tracks,
@@ -163,6 +167,11 @@ def refresh_top_tracks(request):
     spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
     if (spotify_profile):
         if add_top_tracks(spotify_profile):
+            if timezone.now() - spotify_profile.baseline_updated_at > timedelta(seconds=15):
+                print("Cooldown passed")
+                spotify_profile.baseline_tracks = spotify_profile.top_tracks
+                spotify_profile.baseline_updated_at = timezone.now()
+                spotify_profile.save()
             messages.success(request, "Tracks refreshed successfully!")
             return redirect("home")
         messages.error(request, "Couldn't refresh tracks")
@@ -175,6 +184,11 @@ def refresh_top_artists(request):
     spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
     if (spotify_profile):
         if add_top_artists(spotify_profile):
+            if timezone.now() - spotify_profile.baseline_updated_at > timedelta(seconds=15):
+                print("Cooldown passed")
+                spotify_profile.baseline_artists = spotify_profile.top_artists
+                spotify_profile.baseline_updated_at = timezone.now()
+                spotify_profile.save()
             messages.success(request, "Artists refreshed successfully!")
             return redirect("home")
         messages.error(request, "Couldn't refresh artists")

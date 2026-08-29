@@ -597,8 +597,8 @@ button.remove {
 
             <div class="profile-header">
                 <div class="avatar">
-                    {% if spotify_profile %}
-                        {{ spotify_profile.profile_image_url }}
+                    {% if spotify_profile.profile_image_url %}
+                        <img src="{{ spotify_profile.profile_image_url }}" alt="{{ spotify_profile.spotify_name }}">
                     {% else %}
                         {{ username|slice:":1"|upper }}
                     {% endif %}
@@ -621,28 +621,6 @@ button.remove {
                         {% endif %}
                     </div>
                 </div>
-            </div>
-
-            <div class="stat-row">
-                <span class="stat-label">Followers</span>
-                <span>
-                    {% if spotify_profile %}
-                        {{ spotify_profile.follower_count }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </span>
-            </div>
-
-            <div class="stat-row">
-                <span class="stat-label">Country</span>
-                <span>
-                    {% if spotify_connected %}
-                        {{ spotify_profile.country }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </span>
             </div>
 
             <div class="stat-row">

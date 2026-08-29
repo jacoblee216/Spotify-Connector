@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
 # Create your models here.
 class Song(models.Model):
     name = models.CharField(max_length = 25)
@@ -26,17 +27,18 @@ class SpotifyAccount(models.Model):
         on_delete = models.CASCADE,
         related_name="spotify_account",
     )
-    access_token = models.TextField()
-    refresh_token = models.TextField()
+    access_token = models.CharField(max_length=255, null=True, blank=True)
+    refresh_token = models.CharField(max_length=255, null=True, blank=True)
     token_expires_at = models.DateTimeField()
+    baseline_updated_at = models.DateTimeField(default=timezone.now())
 
-    country = models.CharField(max_length=25,default="")
-    follower_count = models.PositiveIntegerField(default=0)
     profile_image_url = models.CharField(max_length=100,blank=True)
     spotify_id = models.CharField(max_length=255,unique=True)
     spotify_name = models.CharField(max_length=25, default="")
     top_tracks = models.JSONField(default=dict, blank=True)
+    baseline_tracks = models.JSONField(default=dict, blank=True) 
     top_artists = models.JSONField(default=dict, blank=True) # key - artist, value - img url
+    baseline_artists = models.JSONField(default=dict, blank=True)
 
     connected_at = models.DateTimeField(auto_now_add=True)
     last_refreshed_at = models.DateTimeField(auto_now_add=True)

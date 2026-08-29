@@ -4,7 +4,38 @@ from django.conf import settings
 from datetime import timedelta
 from django.utils import timezone
 
-
+import requests
+import time
+def get_genres_for_artist(artist_name): # have to work on checking these requests
+    mbid = get_artist_mbid(artist_name)
+    if not mbid:
+        return []
+    time.sleep(1)  # respect rate limit between the two calls
+    genres = get_artist_genres(mbid)
+    return genres
+def get_artist_mbid(artist_name):
+    response = requests.get(
+        "https://musicbrainz.org/ws/2/artist",
+        params={"query": artist_name, "fmt": "json", "limit": 1},
+        headers={"User-Agent": "Spotify Dashboard App/0.1 (jacoblee242006@gmail.com)"},
+    )
+    if response.status_code != 200:
+        return None
+    data = response.json()
+    artists = data.get("artists", [])
+    if not artists:
+        return None
+    return artists[0]["id"]  # this is the MBID
+def get_artist_genres(mbid):
+    response = requests.get(
+        f"https://musicbrainz.org/ws/2/artist/{mbid}",
+        params={"inc": "genres", "fmt": "json"},
+        headers={"User-Agent": "Spotify Dashboard App/0.1 (jacoblee242006@gmail.com)"},
+    )
+    if response.status_code != 200:
+        return []
+    data = response.json()
+    return [g["name"] for g in data.get("genres", [])]
 def exchange_code_for_tokens(callback_code, user): # need to write another request for display_name and spotify_id
     print(f"Token exchange attempt with code: {callback_code[:15]}...")
     response = requests.post(
@@ -43,7 +74,6 @@ def exchange_code_for_tokens(callback_code, user): # need to write another reque
                 "token_expires_at": timezone.now() + timedelta(seconds=token_data["expires_in"]),
                 "spotify_id": user_data["id"],
                 "spotify_name": user_data.get("display_name", ""),
-                "country": user_data.get("country",""),
                 "profile_image_url": user_data["images"][0]["url"] if user_data.get("images") else "",
 
             },
@@ -116,7 +146,6 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
             songs.append(song_object)
             continue
         if not track:
-            print(entry)
             continue  # skip this entry, move to the next song
         else:
             artist_names = [artist["name"] for artist in track["artists"]]
@@ -135,7 +164,7 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
     playlist.save()
 def add_top_tracks(spotify_account):
     track_response= requests.get( 
-        f"https://api.spotify.com/v1/me/top/tracks",
+        f"https://api.spotify.com/v1/me/top/tracks?limit=50",
         headers={"Authorization": f"Bearer {spotify_account.access_token}"},
     )
     if track_response.status_code != 200:
@@ -146,21 +175,25 @@ def add_top_tracks(spotify_account):
     tracks = {} # new tracks to be added
     newCount = 1
     for entry in top_tracks["items"]:
+        attributes = {}
         if entry["is_local"] == True:
-            tracks[entry["name"]] = "Local File Song"
+            attributes["artists"] = "Local File Song"
+            attributes["index"] = newCount
+            newCount += 1
+            tracks[entry["name"]] = attributes
             continue
         artist_names = []
-        attributes = {}
         for artist in entry["artists"]:
             artist_names.append(artist["name"])
         attributes["artists"] = ", ".join(artist_names) # nested dict values: "artists", "index", "spots_moved"
         attributes["index"] = newCount
         newCount += 1
         tracks[entry["name"]] = attributes
-    oldTracks = spotify_account.top_tracks
+    
+    oldTracks = spotify_account.baseline_tracks
     for key, value in tracks.items(): # iterate through new tracks first
         if key not in oldTracks.keys(): # check if new track is in old track, if not assign spots moved to (size of list - new track's current position)
-            value["spots_moved"] = 20 - value["index"]
+            value["spots_moved"] = 50 - value["index"]
         else: # case: track moved position in list, so spots_moved is old position - new position in list (e.g old position: 14 - new position: 11 = +3)
             value["spots_moved"] = oldTracks[key]["index"] - value["index"]
     spotify_account.top_tracks = tracks
@@ -176,7 +209,6 @@ def add_top_artists(spotify_account):
         print(artist_response.text)
         return False
     top_artists = artist_response.json()
-    print(top_artists)
     artists = {}
     newCount = 1
     for entry in top_artists["items"]:
@@ -192,7 +224,7 @@ def add_top_artists(spotify_account):
         attributes["index"] = newCount
         artists[artist_name] = attributes
         newCount += 1
-    oldArtists = spotify_account.top_artists
+    oldArtists = spotify_account.baseline_artists
     for key, value in artists.items():
         if key not in oldArtists.keys():
             value["spots_moved"] = 20 - value["index"]
