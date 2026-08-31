@@ -38,7 +38,8 @@ class SpotifyAccount(models.Model):
     top_tracks = models.JSONField(default=dict, blank=True)
     baseline_tracks = models.JSONField(default=dict, blank=True) 
     top_artists = models.JSONField(default=dict, blank=True) # key - artist, value - img url
-    baseline_artists = models.JSONField(default=dict, blank=True)
+    baseline_artists = models.JSONField(default=dict, blank=True)   
+    top_genres = models.JSONField(default=dict, blank=True)
 
     connected_at = models.DateTimeField(auto_now_add=True)
     last_refreshed_at = models.DateTimeField(auto_now_add=True)

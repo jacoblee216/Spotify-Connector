@@ -3,6 +3,7 @@ import requests
 from django.conf import settings
 from datetime import timedelta
 from django.utils import timezone
+import math
 
 import requests
 import time
@@ -36,7 +37,32 @@ def get_artist_genres(mbid):
         return []
     data = response.json()
     return [g["name"] for g in data.get("genres", [])]
-def exchange_code_for_tokens(callback_code, user): # need to write another request for display_name and spotify_id
+def add_genres(spotify_account): # TO DO: Add genre field to artists to reduce API calls and improve testing efficiency
+    decay_factor = 0.80
+    calculated_genres = {}
+    print("Working on calculating genres")
+    for artist, attributes in spotify_account.top_artists.items():
+        genres = get_genres_for_artist(artist)
+        rank = attributes["index"]
+        for genre in genres:
+            if genre not in calculated_genres.keys():
+                calculated_genres[genre] = math.pow(decay_factor, rank - 1)
+            else:
+                calculated_genres[genre] += math.pow(decay_factor, rank - 1)
+    sorted_genres = {}
+    temp_weight = 0
+    while calculated_genres:
+        temp_weight = 0
+        temp_genre = ""
+        for genre, weight in calculated_genres.items():
+            if weight > temp_weight:
+                temp_weight = weight
+                temp_genre = genre
+        sorted_genres[temp_genre] = temp_weight
+        calculated_genres.pop(temp_genre)
+    spotify_account.top_genres = sorted_genres
+    spotify_account.save()
+def exchange_code_for_tokens(callback_code, user): 
     print(f"Token exchange attempt with code: {callback_code[:15]}...")
     response = requests.post(
     "https://accounts.spotify.com/api/token",   # URL — this is Spotify's fixed endpoint for token exchange
@@ -78,12 +104,21 @@ def exchange_code_for_tokens(callback_code, user): # need to write another reque
 
             },
         )
-        if not exchange_code_for_playlist(spotify_account):
+        """
+        Can't have one function be the gateway to all these API calls
+        Need to split up these functions and have them each have a gate to be called from
+        """
+        
+        if not exchange_code_for_playlist(spotify_account): 
             return False
         if not add_top_tracks(spotify_account):
             return False
         if not add_top_artists(spotify_account):
             return False
+        if spotify_account.top_genres == None:
+            return False
+        else:
+            add_genres(spotify_account)
         return True
 def exchange_code_for_playlist(spotify_account):
     playlist_response = requests.get(

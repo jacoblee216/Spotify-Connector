@@ -27,6 +27,9 @@ Display each playlist's songs by dropdown -- DONE
 Get top tracks and artists -- DONE
 Implement timestamp for refreshing dashboard to display most recent updates -- DONE
 Use MusicBrainz to get genres from artists -- WIP
+Add genre field back to top artists model, that way to improve testing efficiency and reduce API calls just for genres
+Only hit the Spotify API if user is missing data on the dashboard (e.g top artists, top tracks, playlists, or top genres)
+- Only hit the specific endpoint, make a specific call to a specific endpoint for a specific piece of data to control API calls
 """
 def login_required_app_user(view_func):
     @wraps(view_func)
@@ -60,16 +63,19 @@ def home(request):
     playlists = Playlist.objects.none()
     top_tracks = {}
     top_artists = []
+    genres = []
     if is_connected:         
         playlists = spotify_profile.playlists.all().order_by('-song_count')
         top_tracks = spotify_profile.top_tracks
         top_artists = spotify_profile.top_artists
+        genres = spotify_profile.top_genres
     context = {
         "user": user,
         "spotify_profile": spotify_profile if is_connected else None,
         "top_artists": top_artists,
         "playlists": playlists,
         "top_tracks": top_tracks,
+        "genres": genres,
     }
     return render(request, "home.html", context)
 def login_view(request): # also implement a way to get rid of logged in tokens when clicking log out
