@@ -4,6 +4,7 @@ from django.conf import settings
 from datetime import timedelta
 from django.utils import timezone
 import math
+import time
 
 import requests
 import time
@@ -38,17 +39,24 @@ def get_artist_genres(mbid):
     data = response.json()
     return [g["name"] for g in data.get("genres", [])]
 def add_genres(spotify_account): # TO DO: Add genre field to artists to reduce API calls and improve testing efficiency
+    start = time.perf_counter()
     decay_factor = 0.80
     calculated_genres = {}
-    print("Working on calculating genres")
     for artist, attributes in spotify_account.top_artists.items():
-        genres = get_genres_for_artist(artist)
+        print(f"Working on genres for {artist}")
+        genres = attributes.get("genres")
+        if genres is None:
+            genres = get_genres_for_artist(artist)
+            attributes["genres"] = genres
+
         rank = attributes["index"]
         for genre in genres:
-            if genre not in calculated_genres.keys():
+            if genre not in calculated_genres:
                 calculated_genres[genre] = math.pow(decay_factor, rank - 1)
             else:
                 calculated_genres[genre] += math.pow(decay_factor, rank - 1)
+    end = time.perf_counter()
+    print(f"Took {end - start:.4f} seconds")
     sorted_genres = {}
     temp_weight = 0
     while calculated_genres:
@@ -62,6 +70,7 @@ def add_genres(spotify_account): # TO DO: Add genre field to artists to reduce A
         calculated_genres.pop(temp_genre)
     spotify_account.top_genres = sorted_genres
     spotify_account.save()
+    return True
 def exchange_code_for_tokens(callback_code, user): 
     print(f"Token exchange attempt with code: {callback_code[:15]}...")
     response = requests.post(
@@ -120,7 +129,7 @@ def exchange_code_for_tokens(callback_code, user):
         else:
             add_genres(spotify_account)
         return True
-def exchange_code_for_playlist(spotify_account):
+def exchange_code_for_playlist(spotify_account): 
     playlist_response = requests.get(
         "https://api.spotify.com/v1/me/playlists",
         headers={"Authorization": f"Bearer {spotify_account.access_token}"},
@@ -131,8 +140,8 @@ def exchange_code_for_playlist(spotify_account):
         return False
     playlist_data = playlist_response.json()
     # print("Total playlists:", playlist_data["total"]) # print for testing
-
     if playlist_data["items"]:
+        song_count = 0
         for playlist in playlist_data["items"]:
             user_playlist, created = Playlist.objects.update_or_create(
                 spotify_user=spotify_account,
@@ -141,17 +150,18 @@ def exchange_code_for_playlist(spotify_account):
                     "name": playlist["name"],
                 },
             )
-            # print(playlist["name"]) # print for testing
-            add_songs(playlist["id"], spotify_account)
-    for object in Playlist.objects.all():
+            print(playlist["name"])
+            song_count = add_songs(playlist["id"], spotify_account)
+        print(f"{playlist["name"]} - Total: {song_count}")
+    else:
+        print("No playlists found for this user.")
+    for object in spotify_account.playlists.all():
         if playlist_data["items"]:
             for playlist in playlist_data["items"]:
                 if object.name == playlist["name"]:
                     break
             else:
                 object.delete()
-    else:
-        print("No playlists found for this user.")
     return True
 def add_songs(playlist_id, spotify_account): # function to add songs to playlist object 
     song_response= requests.get( # find way to tracks
@@ -197,6 +207,7 @@ def add_songs(playlist_id, spotify_account): # function to add songs to playlist
     playlist.songs.add(*songs)
     playlist.song_count = song_count
     playlist.save()
+    return song_count
 def add_top_tracks(spotify_account):
     track_response= requests.get( 
         f"https://api.spotify.com/v1/me/top/tracks?limit=50",

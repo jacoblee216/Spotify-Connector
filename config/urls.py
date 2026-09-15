@@ -29,4 +29,5 @@ urlpatterns = [
     path('refresh/playlists', views.refresh_playlists, name='refresh_playlists'),
     path('refresh_top_tracks/', views.refresh_top_tracks, name='refresh_top_tracks'),
     path('refresh_top_artists/', views.refresh_top_artists, name='refresh_top_artists'),
+    path('refresh_genres/', views.refresh_genres, name='refresh_genres'),
 ]

@@ -22,14 +22,11 @@ Potential features and additions:
 - Page to determine user's music taste
 
 TO DO:
-Get playlists -- DONE
-Display each playlist's songs by dropdown -- DONE
-Get top tracks and artists -- DONE
-Implement timestamp for refreshing dashboard to display most recent updates -- DONE
-Use MusicBrainz to get genres from artists -- WIP
 Add genre field back to top artists model, that way to improve testing efficiency and reduce API calls just for genres
 Only hit the Spotify API if user is missing data on the dashboard (e.g top artists, top tracks, playlists, or top genres)
 - Only hit the specific endpoint, make a specific call to a specific endpoint for a specific piece of data to control API calls
+
+Calculate top genres through top tracks as well (already done with top artists)
 """
 def login_required_app_user(view_func):
     @wraps(view_func)
@@ -69,6 +66,7 @@ def home(request):
         top_tracks = spotify_profile.top_tracks
         top_artists = spotify_profile.top_artists
         genres = spotify_profile.top_genres
+        genres = list(genres)[:5]
     context = {
         "user": user,
         "spotify_profile": spotify_profile if is_connected else None,
@@ -198,6 +196,21 @@ def refresh_top_artists(request):
             messages.success(request, "Artists refreshed successfully!")
             return redirect("home")
         messages.error(request, "Couldn't refresh artists")
+        return redirect("home")
+    else:
+        messages.error(request, "No user found")
+        return redirect("home")
+@login_required_app_user
+def refresh_genres(request):
+    spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
+    if (spotify_profile):
+        if add_genres(spotify_profile):
+            if timezone.now() - spotify_profile.baseline_updated_at > timedelta(seconds=15):
+                print("Cooldown passed")
+                spotify_profile.save()
+            messages.success(request, "Genres refreshed successfully!")
+            return redirect("home")
+        messages.error(request, "Couldn't refresh genres")
         return redirect("home")
     else:
         messages.error(request, "No user found")
