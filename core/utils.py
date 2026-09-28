@@ -1,4 +1,4 @@
-from .models import AppUser, SpotifyAccount, Playlist, Song
+from .models import AppUser, SpotifyAccount, Playlist, Song, Artist
 import requests
 from django.conf import settings
 from datetime import timedelta
@@ -38,17 +38,15 @@ def get_artist_genres(mbid):
         return []
     data = response.json()
     return [g["name"] for g in data.get("genres", [])]
-def add_genres(spotify_account): # TO DO: Add genre field to artists to reduce API calls and improve testing efficiency
+def calculate_top_genres(spotify_account):
     start = time.perf_counter()
     decay_factor = 0.80
     calculated_genres = {}
     for artist, attributes in spotify_account.top_artists.items():
-        print(f"Working on genres for {artist}")
-        genres = attributes.get("genres")
-        if genres is None:
-            genres = get_genres_for_artist(artist)
-            attributes["genres"] = genres
-
+        genres = Artist.objects.get(spotify_id = artist).genres
+        if genres == None:
+            print(f"{attributes["name"]} is missing genre field")
+            continue
         rank = attributes["index"]
         for genre in genres:
             if genre not in calculated_genres:
@@ -71,6 +69,13 @@ def add_genres(spotify_account): # TO DO: Add genre field to artists to reduce A
     spotify_account.top_genres = sorted_genres
     spotify_account.save()
     return True
+def fetch_genres_from_ids(artists_needing_genres):
+    for artist in artists_needing_genres:
+        artist.genres = get_genres_for_artist(artist.name)
+        artist.save(update_fields=["genres"])
+        time.sleep(1)
+        print(f"{artist.name} was missing genres")
+    
 def exchange_code_for_tokens(callback_code, user): 
     print(f"Token exchange attempt with code: {callback_code[:15]}...")
     response = requests.post(
@@ -127,7 +132,7 @@ def exchange_code_for_tokens(callback_code, user):
         if spotify_account.top_genres == None:
             return False
         else:
-            add_genres(spotify_account)
+            calculate_top_genres(spotify_account)
         return True
 def exchange_code_for_playlist(spotify_account): 
     playlist_response = requests.get(
@@ -163,48 +168,49 @@ def exchange_code_for_playlist(spotify_account):
             else:
                 object.delete()
     return True
-def add_songs(playlist_id, spotify_account): # function to add songs to playlist object 
-    song_response= requests.get( # find way to tracks
-        f"https://api.spotify.com/v1/playlists/{playlist_id}/items",
-        headers={"Authorization": f"Bearer {spotify_account.access_token}"},
-    )
-    if song_response.status_code != 200:
-        print("Song request failed.")
-        print(song_response.text)
-        return False
-    song_data = song_response.json()
-    
+def add_songs(playlist_id, spotify_account):
+    headers = {"Authorization": f"Bearer {spotify_account.access_token}"}
+    url = f"https://api.spotify.com/v1/playlists/{playlist_id}/items"
+    params = {"limit": 50}
+
     songs = []
     song_count = 0
-    for entry in song_data["items"]:
-        track = entry.get("item")
-        if entry["is_local"] == True:
-            artist_names = "Local File Song"
-            song_count += 1
+
+    while url:
+        song_response = requests.get(url, headers=headers, params=params)
+        if song_response.status_code != 200:
+            print("Song request failed.")
+            print(song_response.text)
+            return False
+        song_data = song_response.json()
+
+        for entry in song_data["items"]:
+            track = entry.get("item")
+            if not track:
+                continue  # check this first, before using track
+
+            if entry.get("is_local"):
+                song_id = track.get("id") or track.get("uri")  # local files have no id
+                artist_names = "Local File Song"
+            else:
+                song_id = track["id"]
+                artist_names = ", ".join(a["name"] for a in track.get("artists", []))
+
+            if not song_id:
+                continue
+
             song_object, created = Song.objects.update_or_create(
-                song_id=track["id"],
-                defaults = {
-                    "name": track["name"],
-                    "artists": artist_names,
-            }
+                song_id=song_id,
+                defaults={"name": track["name"], "artists": artist_names},
             )
             songs.append(song_object)
-            continue
-        if not track:
-            continue  # skip this entry, move to the next song
-        else:
-            artist_names = [artist["name"] for artist in track["artists"]]
-        song_object, created = Song.objects.update_or_create(
-            song_id=track["id"],
-            defaults = {
-                "name": track["name"],
-                "artists": ", ".join(artist_names),
-            }
-        )
-        song_count += 1
-        songs.append(song_object)
-    playlist = Playlist.objects.get(playlist_id=playlist_id,spotify_user=spotify_account)
-    playlist.songs.add(*songs)
+            song_count += 1
+
+        url = song_data.get("next")  # next page URL, or None on the last page
+        params = None                # the next URL already includes limit/offset
+
+    playlist = Playlist.objects.get(playlist_id=playlist_id, spotify_user=spotify_account)
+    playlist.songs.set(songs)        # replaces the old set so removed songs disappear
     playlist.song_count = song_count
     playlist.save()
     return song_count
@@ -255,29 +261,51 @@ def add_top_artists(spotify_account):
         print(artist_response.text)
         return False
     top_artists = artist_response.json()
-    artists = {}
+    
     newCount = 1
-    for entry in top_artists["items"]:
-        temp = 1000
+    artists = {} # key - id, values - name = artist name and genres = None
+    for entry in top_artists["items"]: # create dictionary for all returned top artists
+        artist_data = {}
         url = ""
-        attributes = {}
+        temp = 1000
         for image in entry["images"]:
             if image["height"] < temp:
                 temp = image["height"]
                 url = image["url"]
-        artist_name = entry["name"]
-        attributes["url"] = url
-        attributes["index"] = newCount
-        artists[artist_name] = attributes
+        artist_data["url"] = url
+        artist_data["name"] = entry["name"]
+        artist_data["index"] = newCount
+        artists[entry["id"]] = artist_data
         newCount += 1
+        
+    existing_ids = set( # find all existing artists in the global Artist model
+        Artist.objects.filter(spotify_id__in=artists.keys())
+        .values_list("spotify_id", flat=True)
+    )
+    missing_ids = set(artists) - existing_ids # find missing artists not in the global model
+    Artist.objects.bulk_create(
+        [Artist(spotify_id=aid, name=artists[aid]["name"], url = artists[aid]["url"]) for aid in missing_ids],
+        ignore_conflicts=True
+    )
+    
+    artists_needing_genres = list( # find the artists needing genres in the global model
+        Artist.objects.filter(
+            spotify_id__in = artists.keys(),
+            genres__isnull = True,
+        )
+    )
+    if artists_needing_genres:
+        fetch_genres_from_ids(artists_needing_genres)
+        
     oldArtists = spotify_account.baseline_artists
     for key, value in artists.items():
-        if key not in oldArtists.keys():
+        if key not in oldArtists.keys(): # case: wasn't in previous list of top artists (spots moved from the end of the list)
             value["spots_moved"] = 20 - value["index"]
-        else:
+        else: # case: was in previous list of top artists (spots moved from previous spot)
             value["spots_moved"] = oldArtists[key]["index"] - value["index"]
     spotify_account.top_artists = artists
     spotify_account.save(update_fields=["top_artists"])
+
     return True
         
     

@@ -22,11 +22,8 @@ Potential features and additions:
 - Page to determine user's music taste
 
 TO DO:
-Add genre field back to top artists model, that way to improve testing efficiency and reduce API calls just for genres
-Only hit the Spotify API if user is missing data on the dashboard (e.g top artists, top tracks, playlists, or top genres)
-- Only hit the specific endpoint, make a specific call to a specific endpoint for a specific piece of data to control API calls
-
 Calculate top genres through top tracks as well (already done with top artists)
+Refactor top artist model function to create the check if object exists 
 """
 def login_required_app_user(view_func):
     @wraps(view_func)
@@ -204,7 +201,7 @@ def refresh_top_artists(request):
 def refresh_genres(request):
     spotify_profile = SpotifyAccount.objects.filter(user=request.app_user).first()
     if (spotify_profile):
-        if add_genres(spotify_profile):
+        if calculate_top_genres(spotify_profile):
             if timezone.now() - spotify_profile.baseline_updated_at > timedelta(seconds=15):
                 print("Cooldown passed")
                 spotify_profile.save()

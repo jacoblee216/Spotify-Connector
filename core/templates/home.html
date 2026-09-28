@@ -437,6 +437,51 @@ button.remove {
 .spots-moved.same {
     color: var(--muted);
 }
+/* make the playlist content fill the whole li */
+.playlist-dropdown,
+.playlist-row {
+    width: 100%;
+    min-width: 0;
+}
+
+/* same layout for the expandable row and the empty-playlist row */
+/* arrow on the expandable rows */
+/* arrow before the playlist name */
+.playlist-dropdown summary::before {
+    content: "▸";
+    color: var(--muted);
+    font-size: 12px;
+    width: 12px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    text-align: center;
+    transition: transform 0.15s;
+}
+
+/* rotate it when the dropdown is open */
+.playlist-dropdown[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+/* empty playlists: reserve the same space (12px arrow + 10px margin) */
+.playlist-row {
+    padding-left: 22px;
+}
+
+/* remove the default arrow so both row types line up */
+.playlist-dropdown summary {
+    list-style: none;
+    cursor: pointer;
+}
+.playlist-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+/* the song list nested inside the dropdown shouldn't act like the outer scroll area */
+.playlist-dropdown .song-list {
+    overflow: visible;
+    padding: 8px 0 0 0;
+}
 </style>
 </head>
 
@@ -502,7 +547,7 @@ button.remove {
                         {% else %}
                             <span class="artist-thumb-fallback">{{ artist|slice:":1"|upper }}</span>
                         {% endif %}
-                        <span class="title">{{ artist }}</span>
+                        <span class="title">{{ artistData.name }}</span>
                     </li>
                     {% empty %}
                     <li>
