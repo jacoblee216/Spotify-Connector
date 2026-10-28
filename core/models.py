@@ -3,14 +3,13 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.utils import timezone
 # Create your models here.
 
-class Artist(models.Model): 
+class Artist(models.Model): # model for global artists for users to reference
     spotify_id = models.CharField(max_length=30,primary_key = True)
     name = models.CharField(max_length=30)
-    url = models.CharField(max_length=50, default="")
     
     genres = models.JSONField(blank=True, default=None, null=True)
 
-class Song(models.Model):
+class Song(models.Model): # model for songs within playlist
     name = models.CharField(max_length = 25)
     genres = models.JSONField(default=list)
     artists = models.CharField(max_length=25, default="None")

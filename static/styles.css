@@ -1,0 +1,516 @@
+:root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #8a90a0;
+    --accent: #1DB954;
+    --danger: #e5566d;
+    --profile-bg: #162019;
+    --profile-border: #2f5d39;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+}
+
+body {
+    padding: 24px;
+}
+
+.page-container {
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.message.error {
+    color: var(--danger);
+}
+.message.success {
+    color: var(--accent);
+}
+
+.messages {
+    margin-bottom: 16px;
+}
+
+/* Page Header */
+
+.page-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header .greeting {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.page-header .greeting span {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.logout-button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.logout-button:hover {
+    background: var(--panel);
+    opacity: 1;
+}
+
+/* 4-column dashboard layout, scales to the viewport */
+
+.dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 24px;
+    width: 100%;
+    /* the columns fill the available viewport height beneath the header */
+    height: calc(100vh - 140px);
+    min-height: 560px;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+}
+
+@media (max-width: 1250px) {
+    .dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        height: auto;
+    }
+    .column {
+        height: auto;
+    }
+    .card, .profile-card {
+        min-height: 360px;
+    }
+}
+
+@media (max-width: 700px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards */
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    width: 100%;
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+h1 {
+    font-size: 18px;
+    margin: 0 0 14px;
+    flex-shrink: 0;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+}
+
+.card-header h1 {
+    margin: 0;
+}
+
+.refresh-button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 10px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.refresh-button:hover {
+    color: var(--text);
+    border-color: var(--accent);
+    opacity: 1;
+}
+
+.refresh-button svg {
+    width: 11px;
+    height: 11px;
+}
+
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 4px 0 0;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+ul::-webkit-scrollbar {
+    width: 6px;
+}
+
+ul::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+li:last-child {
+    border-bottom: none;
+}
+
+.title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 10px;
+}
+
+.added {
+    color: var(--muted);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* Rank number badge (top tracks, playlist songs) */
+
+.rank {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    width: 22px;
+    flex-shrink: 0;
+    text-align: right;
+    margin-right: 12px;
+}
+
+/* Song list (top tracks, and inside playlist dropdowns) */
+
+.song-list li,
+.ranked-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.song-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.song-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.song-artists {
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: #888;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Buttons */
+
+button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+button.remove {
+    background: var(--danger);
+}
+
+/* Profile Card */
+
+.profile-card {
+    background: var(--profile-bg);
+    border: 1px solid var(--profile-border);
+    border-radius: 14px;
+    padding: 28px 32px;
+    overflow-y: auto;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+}
+
+.avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.profile-name {
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.profile-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid var(--profile-border);
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.stat-label {
+    color: var(--muted);
+}
+
+.genre-box {
+    margin-top: 20px;
+    padding: 14px;
+    border: 1px solid var(--profile-border);
+    border-radius: 10px;
+    background: rgba(255,255,255,.03);
+    flex-shrink: 0;
+}
+
+.genre-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.genre-box .card-header {
+    margin-bottom: 10px;
+}
+
+.genre-box .card-header .genre-title {
+    margin-bottom: 0;
+}
+
+.genre-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.genre-tag {
+    background: var(--accent);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.spotify-button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.artist-row {
+    justify-content: flex-start;
+}
+
+.artist-thumb,
+.artist-thumb-fallback {
+    height: 2.2em;
+    width: 2.2em;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.artist-thumb-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.spots-moved {
+    font-size: 11px;
+    font-weight: 600;
+    width: 34px;
+    flex-shrink: 0;
+    text-align: center;
+    margin-right: 10px;
+}
+
+.spots-moved.up {
+    color: var(--accent);
+}
+
+.spots-moved.down {
+    color: var(--danger);
+}
+
+.spots-moved.same {
+    color: var(--muted);
+}
+
+/* make the playlist content fill the whole li */
+.playlist-dropdown,
+.playlist-row {
+    width: 100%;
+    min-width: 0;
+}
+
+/* arrow before the playlist name */
+.playlist-dropdown summary::before {
+    content: "▸";
+    color: var(--muted);
+    font-size: 12px;
+    width: 12px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    text-align: center;
+    transition: transform 0.15s;
+}
+
+/* rotate it when the dropdown is open */
+.playlist-dropdown[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+/* empty playlists: reserve the same space (12px arrow + 10px margin) */
+.playlist-row {
+    padding-left: 22px;
+}
+
+/* remove the default arrow so both row types line up */
+.playlist-dropdown summary {
+    list-style: none;
+    cursor: pointer;
+}
+.playlist-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+/* the song list nested inside the dropdown shouldn't act like the outer scroll area */
+.playlist-dropdown .song-list {
+    overflow: visible;
+    padding: 8px 0 0 0;
+}
+
+/* Other Users column */
+
+.user-item {
+    cursor: default;
+    justify-content: flex-start;
+}
+
+.genre-tooltip {
+    display: none;
+    position: fixed;          /* positioned by the script, escapes the scroll area */
+    min-width: 160px;
+    padding: 10px 14px;
+    background: #222;
+    color: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.genre-tooltip ol {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.genre-tooltip li {
+    display: list-item;
+    padding: 2px 0;
+    border-bottom: none;
+}

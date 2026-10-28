@@ -23,7 +23,7 @@ Potential features and additions:
 
 TO DO:
 Calculate top genres through top tracks as well (already done with top artists)
-Refactor top artist model function to create the check if object exists 
+
 """
 def login_required_app_user(view_func):
     @wraps(view_func)

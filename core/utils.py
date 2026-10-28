@@ -42,8 +42,8 @@ def calculate_top_genres(spotify_account):
     start = time.perf_counter()
     decay_factor = 0.80
     calculated_genres = {}
-    for artist, attributes in spotify_account.top_artists.items():
-        genres = Artist.objects.get(spotify_id = artist).genres
+    for artist, attributes in spotify_account.top_artists.items(): # key = spotify artist id
+        genres = Artist.objects.get(spotify_id = artist).genres # calculating genres based off top artists
         if genres == None:
             print(f"{attributes["name"]} is missing genre field")
             continue
@@ -53,6 +53,24 @@ def calculate_top_genres(spotify_account):
                 calculated_genres[genre] = math.pow(decay_factor, rank - 1)
             else:
                 calculated_genres[genre] += math.pow(decay_factor, rank - 1)
+    for song_name, attributes in spotify_account.top_tracks.items(): # calculating genres based off top songs
+        for artist in attributes["artists"]:
+            artist_id = artist["id"]
+            artist_name = artist["name"]
+            try:
+                genres = Artist.objects.get(spotify_id = artist_id).genres
+            except Artist.DoesNotExist:
+                print(f"{song_name}: artist {artist_name} is not in the Artist table")
+                continue
+            if genres == None:
+                print(f"{artist_name} is missing genre field")
+                continue
+            rank = attributes["index"]
+            for genre in genres:
+                if genre not in calculated_genres:
+                    calculated_genres[genre] = math.pow(decay_factor, rank - 1)
+                else:
+                    calculated_genres[genre] += math.pow(decay_factor, rank - 1)
     end = time.perf_counter()
     print(f"Took {end - start:.4f} seconds")
     sorted_genres = {}
@@ -234,14 +252,45 @@ def add_top_tracks(spotify_account):
             newCount += 1
             tracks[entry["name"]] = attributes
             continue
-        artist_names = []
+        artists = []
+        existing_artist_ids = []
         for artist in entry["artists"]:
-            artist_names.append(artist["name"])
-        attributes["artists"] = ", ".join(artist_names) # nested dict values: "artists", "index", "spots_moved"
+            artist_data = {}
+            artist_data["id"] = artist["id"]
+            existing_artist_ids.append(artist["id"])
+            artist_data["name"] = artist["name"]
+            artists.append(artist_data)
+        attributes["artists"] = artists
         attributes["index"] = newCount
         newCount += 1
         tracks[entry["name"]] = attributes
+    artist_names = {
+        a["id"]: a["name"]
+        for track in tracks.values()              # tracks = your dict keyed by song name
+        if isinstance(track["artists"], list)     # skip local files
+        for a in track["artists"]
+    }
+
+    existing_ids = set(
+        Artist.objects.filter(spotify_id__in=artist_names.keys())
+        .values_list("spotify_id", flat=True)
+    )
+
+    missing_ids = set(artist_names) - existing_ids
     
+    Artist.objects.bulk_create(
+        [Artist(spotify_id=aid, name=artist_names[aid]) for aid in missing_ids],
+        ignore_conflicts=True
+    )
+    artists_needing_genres = list( # find the artists needing genres in the global model
+        Artist.objects.filter(
+            spotify_id__in = artist_names.keys(),
+            genres__isnull = True,
+        )
+    )
+    if artists_needing_genres:
+        fetch_genres_from_ids(artists_needing_genres)
+        
     oldTracks = spotify_account.baseline_tracks
     for key, value in tracks.items(): # iterate through new tracks first
         if key not in oldTracks.keys(): # check if new track is in old track, if not assign spots moved to (size of list - new track's current position)
@@ -284,7 +333,7 @@ def add_top_artists(spotify_account):
     )
     missing_ids = set(artists) - existing_ids # find missing artists not in the global model
     Artist.objects.bulk_create(
-        [Artist(spotify_id=aid, name=artists[aid]["name"], url = artists[aid]["url"]) for aid in missing_ids],
+        [Artist(spotify_id=aid, name=artists[aid]["name"]) for aid in missing_ids],
         ignore_conflicts=True
     )
     
