@@ -52,7 +52,7 @@ def home(request):
                 spotify_account.refresh_token = None
                 spotify_account.save()
             return redirect("home")
-    spotify_profile = SpotifyAccount.objects.filter(user=user).first()
+    spotify_profile, _ = SpotifyAccount.objects.get_or_create(user=user)
     is_connected = spotify_profile and spotify_profile.access_token is not None
     playlists = Playlist.objects.none()
     top_tracks = {}
@@ -62,8 +62,7 @@ def home(request):
         playlists = spotify_profile.playlists.all().order_by('-song_count')
         top_tracks = spotify_profile.top_tracks
         top_artists = spotify_profile.top_artists
-        genres = spotify_profile.top_genres
-        genres = list(genres)[:5]
+        genres = list(spotify_profile.top_genres or [])[:5]
     context = {
         "user": user,
         "spotify_profile": spotify_profile if is_connected else None,
